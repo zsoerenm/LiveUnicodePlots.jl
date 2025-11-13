@@ -105,13 +105,6 @@ live_plot = LivePlot()
 - If all plots have `:auto` height, space is divided equally
 - Title overhead is calculated dynamically (plots without titles get extra canvas space)
 
-## Examples
-
-See the `test/` directory for comprehensive examples:
-- `test_grid_layout.jl` - Grid layouts with multiple plot types
-- `test_live_layout.jl` - Animated plots with caching
-- `test_layout_cached.jl` - Performance demonstrations
-
 ## API Reference
 
 ### Types
