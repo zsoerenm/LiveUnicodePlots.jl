@@ -132,8 +132,16 @@ function _render_with_border(lines::Vector{String}, width::Int, title::AbstractS
 
     bordered = String[]
 
+    # ANSI color codes matching UnicodePlots
+    # Title: bright white + bold (\e[97;1m)
+    # Border: gray (\e[38;5;8m)
+    # Reset: \e[0m
+    title_color = "\e[97;1m"
+    border_color = "\e[38;5;8m"
+    reset = "\e[0m"
+
     # Add title on separate line if present (matching UnicodePlots style)
-    # UnicodePlots format: 6 spaces + braille spaces + centered title + braille spaces + space
+    # UnicodePlots format: 6 spaces + braille spaces + colored bold title + braille spaces + space
     if !isempty(title)
         # Use braille space (U+2800) like UnicodePlots for proper alignment
         braille_space = '⠀'
@@ -141,26 +149,28 @@ function _render_with_border(lines::Vector{String}, width::Int, title::AbstractS
         # Box total width = width + 2 (for borders)
         box_width = width + 2
         title_padded = lpad(rpad(title, div(box_width + length(title), 2)), box_width)
+        # Apply color to title text only, braille spaces stay uncolored
+        title_with_color = replace(title_padded, title => title_color * title * reset)
         # Add leading spaces and braille padding to match UnicodePlots
-        title_line = "      " * replace(title_padded, ' ' => braille_space) * " "
+        title_line = "      " * replace(title_with_color, ' ' => braille_space) * " "
         push!(bordered, title_line)
     end
 
     # Simple top border (no title decoration)
-    # Add leading spaces to match UnicodePlots alignment
-    top_line = "      " * string(tl, horiz ^ width, tr) * " "
+    # Add leading spaces and gray color to match UnicodePlots
+    top_line = "      " * border_color * string(tl, horiz ^ width, tr) * reset * " "
     push!(bordered, top_line)
 
-    # Content lines with side borders
+    # Content lines with side borders (borders are gray)
     for line in lines
         # Pad line to width
         padded = rpad(line, width)
-        content_line = "      " * string(vert, padded, vert) * " "
+        content_line = "      " * border_color * string(vert) * reset * padded * border_color * string(vert) * reset * " "
         push!(bordered, content_line)
     end
 
-    # Bottom border
-    bottom_line = "      " * string(bl, horiz ^ width, br) * " "
+    # Bottom border (gray)
+    bottom_line = "      " * border_color * string(bl, horiz ^ width, br) * reset * " "
     push!(bordered, bottom_line)
 
     return bordered
