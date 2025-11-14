@@ -77,3 +77,32 @@ end
         @test startswith(bordered[2], "|")
     end
 end
+
+@testset "TextPlot Rendering" begin
+    @testset "show() renders textplot correctly" begin
+        tp = textplot("Hello\nWorld"; width=10, height=5, title="Test")
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), tp)
+        output = String(take!(io))
+
+        @test occursin("Test", output)
+        @test occursin("Hello", output)
+        @test occursin("World", output)
+        @test occursin("┌", output) || occursin("+", output)
+    end
+
+    @testset "textplot with auto width calculates from content" begin
+        tp = textplot("Short\nMedium line\nLong line here"; width=:auto)
+
+        # Width should be determined by longest line
+        @test tp.graphics.char_width >= 14  # "Long line here"
+    end
+
+    @testset "textplot with auto height calculates from line count" begin
+        tp = textplot("Line 1\nLine 2\nLine 3"; height=:auto)
+
+        # Height should match line count
+        @test tp.graphics.char_height == 3
+    end
+end

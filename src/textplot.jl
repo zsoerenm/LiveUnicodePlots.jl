@@ -195,8 +195,31 @@ function textplot(content::AbstractString;
                   title::AbstractString="",
                   border::Symbol=:solid,
                   wrap::Bool=true)
-    # Placeholder implementation
-    graphics = TextGraphics(20, 5)
+    # Process content to get lines
+    # For auto sizing, we need to process first to determine dimensions
+
+    # Calculate actual width
+    actual_width = if width == :auto
+        # Find longest line in content
+        input_lines = split(content, '\n', keepempty=true)
+        max_line_length = maximum(length(rstrip(String(line))) for line in input_lines)
+        max(max_line_length, 5)  # Minimum width of 5
+    else
+        width
+    end
+
+    # Calculate actual height (process text to see how many lines after wrapping)
+    temp_lines = _process_text(content, actual_width, nothing, wrap)
+    actual_height = if height == :auto
+        length(temp_lines)
+    else
+        height
+    end
+
+    # Create graphics with actual dimensions
+    graphics = TextGraphics(actual_width, actual_height)
+
+    # Store all parameters in decorations
     decorations = Dict{Symbol, Any}(
         :title => title,
         :width => width,
@@ -207,4 +230,32 @@ function textplot(content::AbstractString;
     )
 
     return TextPlot(graphics, decorations)
+end
+
+"""
+    Base.show(io::IO, ::MIME"text/plain", tp::TextPlot)
+
+Render the TextPlot to a string for display.
+"""
+function Base.show(io::IO, ::MIME"text/plain", tp::TextPlot)
+    content = tp.decorations[:content]
+    width = tp.graphics.char_width
+    height = tp.graphics.char_height
+    title = tp.decorations[:title]
+    border = tp.decorations[:border]
+    wrap = tp.decorations[:wrap]
+
+    # Process text
+    lines = _process_text(content, width, height, wrap)
+
+    # Pad to height if needed
+    while length(lines) < height
+        push!(lines, "")
+    end
+
+    # Render with border
+    bordered_lines = _render_with_border(lines, width, title, border)
+
+    # Output
+    print(io, join(bordered_lines, '\n'))
 end
