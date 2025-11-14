@@ -1,6 +1,6 @@
 using BenchmarkTools
 using UnicodePlots
-using LiveUnicodePlots
+using LiveLayoutUnicodePlots
 
 # Define the benchmark suite
 const SUITE = BenchmarkGroup()

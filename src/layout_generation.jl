@@ -116,7 +116,7 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
         # Create temporary plots for all plots to measure overhead
         :(temp_plots = [$(temp_exprs...)]),
 
-        :(overheads = LiveUnicodePlots._calculate_overheads(temp_plots, $(num_plots))),
+        :(overheads = LiveLayoutUnicodePlots._calculate_overheads(temp_plots, $(num_plots))),
 
         # Calculate space used by fixed-width plots (width + overhead)
         :(total_fixed = sum(
@@ -145,7 +145,7 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
 
                 _w = $width_calc_expr
 
-                LiveUnicodePlots.LayoutResult(LiveUnicodePlots.merge_plots_horizontal([$(final_exprs...)]))
+                LiveLayoutUnicodePlots.LayoutResult(LiveLayoutUnicodePlots.merge_plots_horizontal([$(final_exprs...)]))
             end
         end
     else
@@ -167,7 +167,7 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
                 end
 
                 # Use truncation when cached to prevent overflow if data changes
-                LiveUnicodePlots.LayoutResult(LiveUnicodePlots.merge_plots_horizontal(
+                LiveLayoutUnicodePlots.LayoutResult(LiveLayoutUnicodePlots.merge_plots_horizontal(
                     [$(final_exprs...)];
                     truncate_to_terminal = length(lp.cached_widths) >= 1
                 ))
@@ -285,7 +285,7 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
         # Width calculation for this row
         width_calc_expr = Expr(:block,
             :(temp_plots = [$(temp_exprs...)]),
-            :(overheads = LiveUnicodePlots._calculate_overheads(temp_plots, $(num_plots_in_row))),
+            :(overheads = LiveLayoutUnicodePlots._calculate_overheads(temp_plots, $(num_plots_in_row))),
             :(total_fixed = sum(isnothing(w) ? 0 : (w + oh) for (w, oh) in zip([$(width_exprs...)], overheads))),
             :(total_auto_overhead = sum(isnothing(w) ? oh : 0 for (w, oh) in zip([$(width_exprs...)], overheads))),
             :(available = term_width - total_fixed - total_auto_overhead - padding_between),
@@ -303,7 +303,7 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
                     $(Symbol("_w_row_$(row_idx)")) = $width_calc_expr
 
                     # Merge plots horizontally for this row
-                    LiveUnicodePlots.merge_plots_horizontal([$(final_exprs...)])
+                    LiveLayoutUnicodePlots.merge_plots_horizontal([$(final_exprs...)])
                 end
             end
         else
@@ -325,7 +325,7 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
                     end
 
                     # Merge plots horizontally for this row
-                    LiveUnicodePlots.merge_plots_horizontal([$(final_exprs...)])
+                    LiveLayoutUnicodePlots.merge_plots_horizontal([$(final_exprs...)])
                 end
             end
         end
@@ -405,10 +405,10 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
             end...)
 
             # Merge rows vertically
-            result = LiveUnicodePlots.merge_plots_vertical(rows)
+            result = LiveLayoutUnicodePlots.merge_plots_vertical(rows)
 
             $(if isnothing(live_plot_expr)
-                :(LiveUnicodePlots.LayoutResult(result))
+                :(LiveLayoutUnicodePlots.LayoutResult(result))
             else
                 quote
                     # Use truncation when cached
@@ -420,14 +420,14 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
                         result_lines = map(result_lines) do line
                             display_length = length(strip_ansi(line))
                             if display_length > term_width
-                                LiveUnicodePlots.truncate_line_preserving_ansi(line, term_width)
+                                LiveLayoutUnicodePlots.truncate_line_preserving_ansi(line, term_width)
                             else
                                 line
                             end
                         end
                         result = join(result_lines, '\n')
                     end
-                    LiveUnicodePlots.LayoutResult(result)
+                    LiveLayoutUnicodePlots.LayoutResult(result)
                 end
             end)
         end

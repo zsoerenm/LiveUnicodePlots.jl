@@ -1,5 +1,5 @@
 using Test
-using LiveUnicodePlots
+using LiveLayoutUnicodePlots
 using UnicodePlots
 
 @testset "Integration Tests" begin
@@ -12,7 +12,7 @@ using UnicodePlots
             lineplot(x, y .* 2; width=20, height=10)
         ]
 
-        @test result isa LiveUnicodePlots.LayoutResult
+        @test result isa LiveLayoutUnicodePlots.LayoutResult
         @test !isempty(result.content)
     end
 
@@ -26,7 +26,7 @@ using UnicodePlots
             [lineplot(x, y .+ 1; width=40, height=8)]
         ]
 
-        @test result isa LiveUnicodePlots.LayoutResult
+        @test result isa LiveLayoutUnicodePlots.LayoutResult
         @test !isempty(result.content)
         @test occursin("\n", result.content)
     end
@@ -40,7 +40,7 @@ using UnicodePlots
             lineplot(x, y .* 2; width=:auto, height=:auto)
         ]
 
-        @test result isa LiveUnicodePlots.LayoutResult
+        @test result isa LiveLayoutUnicodePlots.LayoutResult
         @test !isempty(result.content)
     end
 

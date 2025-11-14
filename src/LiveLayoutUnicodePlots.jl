@@ -1,4 +1,4 @@
-module LiveUnicodePlots
+module LiveLayoutUnicodePlots
 
 using UnicodePlots
 

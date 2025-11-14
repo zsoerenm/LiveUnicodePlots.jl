@@ -1,4 +1,4 @@
-# LiveUnicodePlots.jl
+# LiveLayoutUnicodePlots.jl
 
 A Julia package for creating live/animated terminal plots and flexible plot layouts with [UnicodePlots.jl](https://github.com/JuliaPlots/UnicodePlots.jl).
 
@@ -13,7 +13,7 @@ A Julia package for creating live/animated terminal plots and flexible plot layo
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/zsoerenm/LiveUnicodePlots.jl")
+Pkg.add(url="https://github.com/zsoerenm/LiveLayoutUnicodePlots.jl")
 ```
 
 ## Quick Start
@@ -21,14 +21,14 @@ Pkg.add(url="https://github.com/zsoerenm/LiveUnicodePlots.jl")
 ### Static Horizontal Layout
 
 ```julia
-using LiveUnicodePlots
+using LiveLayoutUnicodePlots
 using UnicodePlots
 
 x = range(0, 2π, length=30)
 
 @layout [
-    lineplot(x, sin.(x); title="sin(x)", width=:auto),
-    lineplot(x, cos.(x); title="cos(x)", width=:auto)
+    lineplot(x, sin.(x); title="sin(x)"), # equivalent to width=:auto, height=:auto
+    lineplot(x, cos.(x); title="cos(x)") # equivalent to width=:auto height=:auto
 ]
 ```
 
@@ -91,9 +91,9 @@ live_plot = LivePlot()
 
 ### Width and Height Negotiation
 
-- Use `width=:auto` for automatic width calculation based on terminal size
-- Use `height=:auto` for automatic height calculation in grid layouts
-- Fixed dimensions are respected and remaining space is distributed to `:auto` plots
+- Use `width=:auto` (or omit the `width` parameter entirely) for automatic width calculation based on terminal size
+- Use `height=:auto` (or omit the `height` parameter entirely) for automatic height calculation in grid layouts
+- Fixed dimensions are respected and remaining space is distributed to automatically sized plots
 - Overhead (borders, labels) is automatically accounted for
 
 ### Grid Layout Behavior
@@ -102,7 +102,7 @@ live_plot = LivePlot()
 - Width negotiation happens within each row
 - Height negotiation happens between rows
 - If any plot in a row has fixed height, the maximum is used
-- If all plots have `:auto` height, space is divided equally
+- If all plots have automatic height calculation, space is divided equally
 - Title overhead is calculated dynamically (plots without titles get extra canvas space)
 
 ## API Reference
