@@ -112,6 +112,58 @@ function _process_text(content::AbstractString, width::Int, height::Union{Int,No
 end
 
 """
+    _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
+
+Render text lines with borders. Width is the content width (excluding borders).
+Returns a vector of strings including border lines.
+"""
+function _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
+    # Choose border characters
+    if border == :solid
+        tl, tr, bl, br = '┌', '┐', '└', '┘'
+        horiz, vert = '─', '│'
+    elseif border == :ascii
+        tl, tr, bl, br = '+', '+', '+', '+'
+        horiz, vert = '-', '|'
+    else
+        error("Unknown border style: $border. Use :solid or :ascii")
+    end
+
+    bordered = String[]
+
+    # Top border with optional title
+    if isempty(title)
+        top_line = string(tl, horiz ^ width, tr)
+    else
+        # Format: "┌─ Title ─────┐"
+        title_str = " $title "
+        if length(title_str) + 2 <= width
+            remaining = width - length(title_str)
+            top_line = string(tl, horiz, title_str, horiz ^ remaining, tr)
+        else
+            # Title too long, truncate
+            truncated_title = title[1:min(length(title), width-4)] * " "
+            remaining = width - length(truncated_title) - 1
+            top_line = string(tl, horiz, truncated_title, horiz ^ max(0, remaining), tr)
+        end
+    end
+    push!(bordered, top_line)
+
+    # Content lines with side borders
+    for line in lines
+        # Pad line to width
+        padded = rpad(line, width)
+        push!(bordered, string(vert, padded, vert))
+    end
+
+    # Bottom border
+    bottom_line = string(bl, horiz ^ width, br)
+    push!(bordered, bottom_line)
+
+    return bordered
+end
+
+"""
     textplot(content::AbstractString;
              width=:auto,
              height=:auto,

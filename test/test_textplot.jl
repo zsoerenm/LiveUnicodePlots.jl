@@ -46,3 +46,34 @@ end
         @test length(lines) == 3
     end
 end
+
+@testset "Border Rendering" begin
+    @testset "solid border without title" begin
+        lines = ["Hello", "World"]
+        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :solid)
+
+        @test startswith(bordered[1], "┌")
+        @test endswith(bordered[1], "┐")
+        @test startswith(bordered[2], "│")
+        @test startswith(bordered[end], "└")
+        @test endswith(bordered[end], "┘")
+        @test length(bordered) == 4  # top + 2 content + bottom
+    end
+
+    @testset "solid border with title" begin
+        lines = ["Hello"]
+        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "Title", :solid)
+
+        @test occursin("Title", bordered[1])
+        @test startswith(bordered[1], "┌─")
+    end
+
+    @testset "ascii border" begin
+        lines = ["Hello"]
+        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :ascii)
+
+        @test startswith(bordered[1], "+")
+        @test endswith(bordered[1], "+")
+        @test startswith(bordered[2], "|")
+    end
+end
