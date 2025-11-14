@@ -138,7 +138,7 @@ function _render_with_border(lines::Vector{String}, width::Int, title::AbstractS
         # Format: "┌─ Title ─────┐"
         title_str = " $title "
         if length(title_str) + 2 <= width
-            remaining = width - length(title_str)
+            remaining = width - length(title_str) - 1  # -1 for the horiz before title
             top_line = string(tl, horiz, title_str, horiz ^ remaining, tr)
         else
             # Title too long, truncate
