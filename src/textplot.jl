@@ -115,7 +115,8 @@ end
     _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
 
 Render text lines with borders. Width is the content width (excluding borders).
-Returns a vector of strings including border lines.
+Returns a vector of strings including border lines and optional title line.
+Matches UnicodePlots style: title on separate line above box, simple borders.
 """
 function _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
     # Choose border characters
@@ -131,33 +132,35 @@ function _render_with_border(lines::Vector{String}, width::Int, title::AbstractS
 
     bordered = String[]
 
-    # Top border with optional title
-    if isempty(title)
-        top_line = string(tl, horiz ^ width, tr)
-    else
-        # Format: "┌─ Title ─────┐"
-        title_str = " $title "
-        if length(title_str) + 2 <= width
-            remaining = width - length(title_str) - 1  # -1 for the horiz before title
-            top_line = string(tl, horiz, title_str, horiz ^ remaining, tr)
-        else
-            # Title too long, truncate
-            truncated_title = title[1:min(length(title), width-4)] * " "
-            remaining = width - length(truncated_title) - 1
-            top_line = string(tl, horiz, truncated_title, horiz ^ max(0, remaining), tr)
-        end
+    # Add title on separate line if present (matching UnicodePlots style)
+    # UnicodePlots format: 6 spaces + braille spaces + centered title + braille spaces + space
+    if !isempty(title)
+        # Use braille space (U+2800) like UnicodePlots for proper alignment
+        braille_space = '⠀'
+        # Calculate padding to center title over the box
+        # Box total width = width + 2 (for borders)
+        box_width = width + 2
+        title_padded = lpad(rpad(title, div(box_width + length(title), 2)), box_width)
+        # Add leading spaces and braille padding to match UnicodePlots
+        title_line = "      " * replace(title_padded, ' ' => braille_space) * " "
+        push!(bordered, title_line)
     end
+
+    # Simple top border (no title decoration)
+    # Add leading spaces to match UnicodePlots alignment
+    top_line = "      " * string(tl, horiz ^ width, tr) * " "
     push!(bordered, top_line)
 
     # Content lines with side borders
     for line in lines
         # Pad line to width
         padded = rpad(line, width)
-        push!(bordered, string(vert, padded, vert))
+        content_line = "      " * string(vert, padded, vert) * " "
+        push!(bordered, content_line)
     end
 
     # Bottom border
-    bottom_line = string(bl, horiz ^ width, br)
+    bottom_line = "      " * string(bl, horiz ^ width, br) * " "
     push!(bordered, bottom_line)
 
     return bordered

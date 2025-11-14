@@ -52,11 +52,12 @@ end
         lines = ["Hello", "World"]
         bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :solid)
 
-        @test startswith(bordered[1], "┌")
-        @test endswith(bordered[1], "┐")
-        @test startswith(bordered[2], "│")
-        @test startswith(bordered[end], "└")
-        @test endswith(bordered[end], "┘")
+        # Lines now have leading spaces (6) and trailing space (1) to match UnicodePlots
+        @test occursin("┌", bordered[1])
+        @test occursin("┐", bordered[1])
+        @test occursin("│", bordered[2])
+        @test occursin("└", bordered[end])
+        @test occursin("┘", bordered[end])
         @test length(bordered) == 4  # top + 2 content + bottom
     end
 
@@ -64,17 +65,19 @@ end
         lines = ["Hello"]
         bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "Title", :solid)
 
+        # Title is on first line, border starts on second line
         @test occursin("Title", bordered[1])
-        @test startswith(bordered[1], "┌─")
+        @test occursin("┌", bordered[2])
+        @test length(bordered) == 4  # title + top + content + bottom
     end
 
     @testset "ascii border" begin
         lines = ["Hello"]
         bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :ascii)
 
-        @test startswith(bordered[1], "+")
-        @test endswith(bordered[1], "+")
-        @test startswith(bordered[2], "|")
+        # Lines have leading/trailing spaces
+        @test occursin("+", bordered[1])
+        @test occursin("|", bordered[2])
     end
 end
 
