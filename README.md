@@ -66,6 +66,44 @@ end
 plot_sincos()
 ```
 
+### Text Elements
+
+Display status messages, metrics, or logs alongside plots:
+
+```julia
+using LiveLayoutUnicodePlots
+using UnicodePlots
+
+x = range(0, 2π, length=30)
+
+@layout [
+    lineplot(x, sin.(x); title="Signal"),
+    textplot("""
+        Status: Running
+        Count: 1234
+        Rate: 45.2/s
+        Errors: 0
+    """; width=25, title="Metrics")
+]
+```
+
+Text elements support automatic width/height negotiation and word wrapping:
+
+```julia
+# Auto width based on content
+@layout [
+    lineplot(x, cos.(x); title="Data", width=50),
+    textplot("Processing...\nProgress: 75%"; width=:auto, title="Status")
+]
+
+# Disable wrapping for columnar data
+textplot("""
+    CPU: 45%
+    Memory: 2.3 GB
+    Disk: 180 GB
+"""; wrap=false, width=:auto, title="System")
+```
+
 ## Documentation
 
 ### Macros
@@ -119,6 +157,7 @@ live_plot = LivePlot()
 
 - `merge_plots_horizontal(plots)`: Merge plots side-by-side
 - `merge_plots_vertical(rows)`: Merge plot rows vertically
+- `textplot(content; width, height, title, border, wrap)`: Create text display element
 
 ## License
 
