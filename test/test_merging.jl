@@ -1,5 +1,5 @@
 using Test
-using LiveUnicodePlots
+using LiveLayoutUnicodePlots
 
 @testset "Merging" begin
     @testset "merge_plots_vertical" begin
@@ -18,21 +18,21 @@ using LiveUnicodePlots
     @testset "truncate_line_preserving_ansi" begin
         # Test basic truncation (may add ANSI reset codes)
         line = "Hello World"
-        truncated = LiveUnicodePlots.truncate_line_preserving_ansi(line, 5)
+        truncated = LiveLayoutUnicodePlots.truncate_line_preserving_ansi(line, 5)
         @test occursin("Hello", truncated)
 
         # Test line shorter than max_width
-        truncated = LiveUnicodePlots.truncate_line_preserving_ansi(line, 20)
+        truncated = LiveLayoutUnicodePlots.truncate_line_preserving_ansi(line, 20)
         @test occursin("Hello World", truncated)
 
         # Test with ANSI codes
         line = "\e[31mRed Text\e[0m"
-        truncated = LiveUnicodePlots.truncate_line_preserving_ansi(line, 3)
+        truncated = LiveLayoutUnicodePlots.truncate_line_preserving_ansi(line, 3)
         # Should preserve ANSI codes
         @test occursin("\e[", truncated)
 
         # Test empty line
-        result = LiveUnicodePlots.truncate_line_preserving_ansi("", 10)
+        result = LiveLayoutUnicodePlots.truncate_line_preserving_ansi("", 10)
         @test result isa String  # May add reset code or be empty
     end
 

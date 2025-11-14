@@ -1,12 +1,12 @@
 using Test
-using LiveUnicodePlots
+using LiveLayoutUnicodePlots
 using UnicodePlots
 
 @testset "Types" begin
     @testset "LayoutResult" begin
         # Test LayoutResult construction
         content = "test content"
-        lr = LiveUnicodePlots.LayoutResult(content)
+        lr = LiveLayoutUnicodePlots.LayoutResult(content)
         @test lr.content == content
 
         # Test show method includes content
@@ -48,7 +48,7 @@ using UnicodePlots
 
         # Test with LayoutResult
         redirect_stdout(devnull) do
-            lp(LiveUnicodePlots.LayoutResult("layout content"))
+            lp(LiveLayoutUnicodePlots.LayoutResult("layout content"))
         end
 
         @test lp.first_iteration == false
