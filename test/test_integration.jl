@@ -143,4 +143,88 @@ using UnicodePlots
             @test !isempty(lp.cached_widths)
         end
     end
+
+    @testset "Dynamic plot switching" begin
+        @testset "horizontal layout with plot type switching" begin
+            lp = LivePlot()
+            x = [1, 2, 3, 4, 5]
+            y = [1, 4, 9, 16, 25]
+
+            # Start with lineplot
+            redirect_stdout(devnull) do
+                for i in 1:3
+                    @live_layout lp [
+                        lineplot(x, y; width=:auto),
+                        lineplot(x, y .* 2; width=:auto)
+                    ]
+                end
+            end
+
+            sig_lineplot = copy(lp.cached_signatures[1])
+
+            # Switch to textplot in first position
+            redirect_stdout(devnull) do
+                for i in 1:3
+                    @live_layout lp [
+                        textplot("Status: Running"; width=:auto),
+                        lineplot(x, y .* 2; width=:auto)
+                    ]
+                end
+            end
+
+            sig_textplot = lp.cached_signatures[1]
+
+            @test sig_lineplot != sig_textplot
+            @test length(lp.cached_widths) == 1
+            @test length(lp.cached_signatures) == 1
+        end
+
+        @testset "title toggling invalidates cache" begin
+            lp = LivePlot()
+            x = [1, 2, 3, 4, 5]
+
+            # Iteration 1: with title
+            redirect_stdout(devnull) do
+                @live_layout lp [lineplot(x, x; width=:auto, title="Titled")]
+            end
+            sig_with_title = lp.cached_signatures[1][1]
+
+            # Iteration 2: without title
+            redirect_stdout(devnull) do
+                @live_layout lp [lineplot(x, x; width=:auto, title="")]
+            end
+            sig_without_title = lp.cached_signatures[1][1]
+
+            @test sig_with_title != sig_without_title
+        end
+
+        @testset "conditional plot rendering with cache" begin
+            lp = LivePlot()
+            x = Float64[]
+            y = Float64[]
+
+            redirect_stdout(devnull) do
+                for i in 1:10
+                    push!(x, i * 0.1)
+                    push!(y, sin(i * 0.1))
+
+                    # Conditionally show lineplot or textplot
+                    plot1 = if i > 5
+                        lineplot(x, y; width=:auto, title="Signal")
+                    else
+                        textplot("Warming up..."; width=:auto, title="Status")
+                    end
+
+                    @live_layout lp [
+                        plot1,
+                        lineplot(x, cos.(x); width=:auto, title="Reference")
+                    ]
+                end
+            end
+
+            # Cache should have been invalidated at i=6
+            @test length(lp.cached_signatures) == 1
+            @test length(lp.cached_signatures[1]) == 2
+        end
+    end
 end

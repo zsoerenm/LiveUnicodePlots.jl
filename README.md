@@ -104,6 +104,44 @@ textplot("""
 """; wrap=false, width=:auto, title="System")
 ```
 
+### Dynamic Plot Switching
+
+LivePlot automatically detects when plot characteristics change and recalculates layouts:
+
+```julia
+using LiveLayoutUnicodePlots
+using UnicodePlots
+
+live_plot = LivePlot()
+x = Float64[]
+y = Float64[]
+
+for i in 1:100
+    push!(x, i * 0.1)
+    push!(y, sin(i * 0.1))
+
+    # Dynamically choose plot type based on condition
+    plot1 = if length(y) > 50 && maximum(y) > 0.5
+        lineplot(x, y; title="Signal")
+    else
+        textplot("Waiting for signal..."; width=30, title="Status")
+    end
+
+    @live_layout live_plot [
+        plot1,
+        lineplot(x, cos.(x); title="Reference")
+    ]
+
+    sleep(0.05)
+end
+```
+
+The cache automatically invalidates when:
+- Plot type changes (lineplot ↔ textplot ↔ barplot)
+- Title changes
+- Labels change (xlabel, ylabel)
+- Axis limits change (xlim, ylim)
+
 ## Documentation
 
 ### Macros

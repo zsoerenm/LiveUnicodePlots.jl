@@ -65,6 +65,7 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
     # Extract width info and create temporary plots for overhead calculation
     width_exprs = []
     temp_exprs = []
+    sig_hash_exprs = []  # Direct parameter hashing instead of creating plots
     auto_width_count = 0
 
     for expr in plot_exprs
@@ -89,6 +90,10 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
             add_width_param(remove_title(expr), 10)
         end
         push!(temp_exprs, new_expr)
+
+        # Extract signature parameters and generate hash expression (no plot creation!)
+        # This hashes the parameter values directly: hash((plot_fn, title, xlabel, ylabel, xlim, ylim))
+        push!(sig_hash_exprs, extract_signature_params(expr))
     end
 
     # Process each plot expression for final creation with negotiated width
@@ -157,13 +162,29 @@ function _generate_layout_code(plot_exprs, num_plots, live_plot_expr)
                 padding_between = 2 * ($num_plots - 1)
 
                 _w = if length(lp.cached_widths) < 1
-                    # First time - calculate and cache
+                    # First time - calculate, cache width AND signatures
+                    # Compute signatures by hashing parameters directly (no plot creation!)
+                    signatures = [$(sig_hash_exprs...)]
                     calculated_w = $width_calc_expr
+
                     push!(lp.cached_widths, calculated_w)
+                    push!(lp.cached_signatures, signatures)
                     calculated_w
                 else
-                    # Use cached width
-                    lp.cached_widths[1]
+                    # Check if plot signatures have changed
+                    # Compute signatures by hashing parameters directly (no plot creation!)
+                    current_signatures = [$(sig_hash_exprs...)]
+
+                    if current_signatures != lp.cached_signatures[1]
+                        # Signatures changed - recalculate
+                        calculated_w = $width_calc_expr
+                        lp.cached_widths[1] = calculated_w
+                        lp.cached_signatures[1] = current_signatures
+                        calculated_w
+                    else
+                        # Cache still valid
+                        lp.cached_widths[1]
+                    end
                 end
 
                 # Use truncation when cached to prevent overflow if data changes
@@ -208,6 +229,7 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
         # Process each plot in the row for width negotiation (horizontal)
         width_exprs = []
         temp_exprs = []
+        sig_hash_exprs = []  # Direct parameter hashing instead of creating plots
         auto_width_count = 0
 
         for expr in plot_exprs
@@ -229,6 +251,9 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
                 add_width_param(remove_title(expr), 10)
             end
             push!(temp_exprs, new_expr)
+
+            # Extract signature parameters and generate hash expression (no plot creation!)
+            push!(sig_hash_exprs, extract_signature_params(expr))
         end
 
         # Extract height info and title info for this row (check all plots in the row)
@@ -316,12 +341,27 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
 
                     $(Symbol("_w_row_$(row_idx)")) = if length(lp.cached_widths) < $row_idx
                         # First time for this row - calculate and cache
+                        # Compute signatures by hashing parameters directly (no plot creation!)
+                        signatures = [$(sig_hash_exprs...)]
                         calculated_w = $width_calc_expr
+
                         push!(lp.cached_widths, calculated_w)
+                        push!(lp.cached_signatures, signatures)
                         calculated_w
                     else
-                        # Use cached width for this row
-                        lp.cached_widths[$row_idx]
+                        # Check signatures for this row
+                        # Compute signatures by hashing parameters directly (no plot creation!)
+                        current_signatures = [$(sig_hash_exprs...)]
+
+                        if current_signatures != lp.cached_signatures[$row_idx]
+                            # Recalculate
+                            calculated_w = $width_calc_expr
+                            lp.cached_widths[$row_idx] = calculated_w
+                            lp.cached_signatures[$row_idx] = current_signatures
+                            calculated_w
+                        else
+                            lp.cached_widths[$row_idx]
+                        end
                     end
 
                     # Merge plots horizontally for this row
