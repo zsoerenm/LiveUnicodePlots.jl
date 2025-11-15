@@ -150,3 +150,65 @@ end
         @test sig1 != sig2
     end
 end
+
+@testset "Grid layout cache invalidation" begin
+    @testset "cache stores signatures per row" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration with 2 rows
+        result = @layout lp [
+            [lineplot(x, x; width=:auto, height=8), lineplot(x, x.^2; width=:auto, height=8)],
+            [lineplot(x, x.^3; width=:auto, height=:auto)]
+        ]
+
+        @test length(lp.cached_widths) == 2
+        @test length(lp.cached_signatures) == 2
+        @test length(lp.cached_signatures[1]) == 2  # Row 1 has 2 plots
+        @test length(lp.cached_signatures[2]) == 1  # Row 2 has 1 plot
+    end
+
+    @testset "cache reuses widths when signatures match per row" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration
+        result1 = @layout lp [
+            [lineplot(x, x; width=:auto, height=8)],
+            [lineplot(x, x.^2; width=:auto, height=:auto)]
+        ]
+        cached_width_row1 = lp.cached_widths[1]
+        cached_width_row2 = lp.cached_widths[2]
+
+        # Second iteration with same characteristics
+        result2 = @layout lp [
+            [lineplot(x, x .+ 1; width=:auto, height=8)],
+            [lineplot(x, (x .+ 1).^2; width=:auto, height=:auto)]
+        ]
+
+        @test lp.cached_widths[1] == cached_width_row1
+        @test lp.cached_widths[2] == cached_width_row2
+    end
+
+    @testset "cache invalidates row when signature changes in that row" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration
+        result1 = @layout lp [
+            [lineplot(x, x; width=:auto, height=8)],
+            [lineplot(x, x.^2; width=:auto, height=:auto)]
+        ]
+        sig_row1_before = copy(lp.cached_signatures[1])
+        sig_row2_before = copy(lp.cached_signatures[2])
+
+        # Second iteration - change plot type in row 1 only
+        result2 = @layout lp [
+            [textplot("Hello"; width=:auto, height=8)],
+            [lineplot(x, x.^2; width=:auto, height=:auto)]
+        ]
+
+        @test lp.cached_signatures[1] != sig_row1_before  # Row 1 changed
+        @test lp.cached_signatures[2] == sig_row2_before  # Row 2 unchanged
+    end
+end

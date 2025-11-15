@@ -343,12 +343,27 @@ function _generate_grid_layout_code(row_exprs, live_plot_expr)
 
                     $(Symbol("_w_row_$(row_idx)")) = if length(lp.cached_widths) < $row_idx
                         # First time for this row - calculate and cache
+                        temp_plots = [$(temp_exprs...)]
+                        signatures = [LiveLayoutUnicodePlots.compute_plot_signature(p) for p in temp_plots]
                         calculated_w = $width_calc_expr
+
                         push!(lp.cached_widths, calculated_w)
+                        push!(lp.cached_signatures, signatures)
                         calculated_w
                     else
-                        # Use cached width for this row
-                        lp.cached_widths[$row_idx]
+                        # Check signatures for this row
+                        temp_plots = [$(temp_exprs...)]
+                        current_signatures = [LiveLayoutUnicodePlots.compute_plot_signature(p) for p in temp_plots]
+
+                        if current_signatures != lp.cached_signatures[$row_idx]
+                            # Recalculate
+                            calculated_w = $width_calc_expr
+                            lp.cached_widths[$row_idx] = calculated_w
+                            lp.cached_signatures[$row_idx] = current_signatures
+                            calculated_w
+                        else
+                            lp.cached_widths[$row_idx]
+                        end
                     end
 
                     # Merge plots horizontally for this row
