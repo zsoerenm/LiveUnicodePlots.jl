@@ -89,3 +89,64 @@ end
         @test sig1 != sig3
     end
 end
+
+@testset "Horizontal layout cache invalidation" begin
+    @testset "cache stores signatures on first iteration" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+        y = [1, 4, 9, 16, 25]
+
+        # First iteration
+        result = @layout lp [lineplot(x, y; width=:auto)]
+
+        @test length(lp.cached_widths) == 1
+        @test length(lp.cached_signatures) == 1
+        @test length(lp.cached_signatures[1]) == 1
+        @test lp.cached_signatures[1][1] isa UInt64
+    end
+
+    @testset "cache reuses width when signatures match" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration
+        result1 = @layout lp [lineplot(x, x; width=:auto)]
+        cached_width = lp.cached_widths[1]
+
+        # Second iteration with same plot characteristics
+        result2 = @layout lp [lineplot(x, x .+ 1; width=:auto)]
+
+        @test lp.cached_widths[1] == cached_width
+        @test length(lp.cached_signatures) == 1  # Not recalculated
+    end
+
+    @testset "cache invalidates when plot type changes" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration with lineplot
+        result1 = @layout lp [lineplot(x, x; width=:auto)]
+        sig1 = lp.cached_signatures[1][1]
+
+        # Second iteration with textplot
+        result2 = @layout lp [textplot("Hello"; width=:auto)]
+        sig2 = lp.cached_signatures[1][1]
+
+        @test sig1 != sig2  # Signature changed
+    end
+
+    @testset "cache invalidates when title changes" begin
+        lp = LivePlot()
+        x = [1, 2, 3, 4, 5]
+
+        # First iteration
+        result1 = @layout lp [lineplot(x, x; width=:auto, title="Title 1")]
+        sig1 = lp.cached_signatures[1][1]
+
+        # Second iteration with different title
+        result2 = @layout lp [lineplot(x, x; width=:auto, title="Title 2")]
+        sig2 = lp.cached_signatures[1][1]
+
+        @test sig1 != sig2
+    end
+end
