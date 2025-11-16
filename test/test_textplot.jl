@@ -2,11 +2,12 @@ using Test
 using LiveLayoutUnicodePlots
 
 @testset "TextPlot Types" begin
-    @testset "textplot() creates TextPlot with correct structure" begin
+    @testset "textplot() creates Plot with TextGraphics" begin
+        using UnicodePlots: Plot
         tp = textplot("Hello World")
 
-        @test tp isa LiveLayoutUnicodePlots.TextPlot
-        @test hasfield(typeof(tp), :graphics)
+        @test tp isa Plot
+        @test tp.graphics isa LiveLayoutUnicodePlots.TextGraphics
         @test hasfield(typeof(tp.graphics), :char_width)
         @test hasfield(typeof(tp.graphics), :char_height)
     end
@@ -44,40 +45,6 @@ end
         lines = LiveLayoutUnicodePlots._process_text(content, 20, 3, false)
 
         @test length(lines) == 3
-    end
-end
-
-@testset "Border Rendering" begin
-    @testset "solid border without title" begin
-        lines = ["Hello", "World"]
-        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :solid)
-
-        # Lines now have leading spaces (6) and trailing space (1) to match UnicodePlots
-        @test occursin("┌", bordered[1])
-        @test occursin("┐", bordered[1])
-        @test occursin("│", bordered[2])
-        @test occursin("└", bordered[end])
-        @test occursin("┘", bordered[end])
-        @test length(bordered) == 4  # top + 2 content + bottom
-    end
-
-    @testset "solid border with title" begin
-        lines = ["Hello"]
-        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "Title", :solid)
-
-        # Title is on first line, border starts on second line
-        @test occursin("Title", bordered[1])
-        @test occursin("┌", bordered[2])
-        @test length(bordered) == 4  # title + top + content + bottom
-    end
-
-    @testset "ascii border" begin
-        lines = ["Hello"]
-        bordered = LiveLayoutUnicodePlots._render_with_border(lines, 10, "", :ascii)
-
-        # Lines have leading/trailing spaces
-        @test occursin("+", bordered[1])
-        @test occursin("|", bordered[2])
     end
 end
 
