@@ -1,26 +1,65 @@
 # TextPlot implementation for displaying text content in layouts
+# Uses UnicodePlots' Plot interface for consistency
+
+using UnicodePlots: Plot, GraphicsArea
 
 """
-    TextGraphics
+    TextGraphics <: GraphicsArea
 
-Minimal graphics structure for TextPlot, mimicking UnicodePlots' graphics interface.
-Uses char_width/char_height like BarplotGraphics (not pixel_width like BrailleCanvas).
+Graphics structure for text display, compatible with UnicodePlots' Plot interface.
+Implements the required methods: nrows, ncols, print_row, and preprocess!.
 """
-struct TextGraphics
-    char_width::Int
-    char_height::Int
+mutable struct TextGraphics <: GraphicsArea
+    lines::Vector{String}      # Processed text lines to display
+    char_width::Int            # Width in characters
+    char_height::Int           # Height in lines (number of rows)
+    visible::Bool              # Required by UnicodePlots' show method
+end
+
+# Required interface methods for UnicodePlots' Plot
+
+"""
+    UnicodePlots.nrows(g::TextGraphics)
+
+Return the number of rows (lines) in the text graphics.
+"""
+UnicodePlots.nrows(g::TextGraphics) = g.char_height
+
+"""
+    UnicodePlots.ncols(g::TextGraphics)
+
+Return the number of columns (width) in the text graphics.
+"""
+UnicodePlots.ncols(g::TextGraphics) = g.char_width
+
+"""
+    UnicodePlots.print_row(io::IO, print_nocol::Function, print_color::Function, g::TextGraphics, row::Int)
+
+Print a specific row of the text graphics. This is called by UnicodePlots' show method.
+"""
+function UnicodePlots.print_row(io::IO, print_nocol::Function, print_color::Function, g::TextGraphics, row::Int)
+    if row <= length(g.lines)
+        # Pad line to exact width
+        line = rpad(g.lines[row], g.char_width)
+        print_nocol(io, line)
+    else
+        # Empty line if beyond content
+        print_nocol(io, " " ^ g.char_width)
+    end
 end
 
 """
-    TextPlot
+    UnicodePlots.preprocess!(io::IO, g::TextGraphics)
 
-A plot-like structure for displaying text content with borders, compatible with
-LiveLayoutUnicodePlots layout system.
+Preprocessing step called before rendering. Returns a postprocessing function.
+For TextGraphics, no preprocessing is needed.
 """
-struct TextPlot
-    graphics::TextGraphics
-    decorations::Dict{Symbol, Any}
+function UnicodePlots.preprocess!(::IO, ::TextGraphics)
+    # Return a no-op postprocessing function that takes the graphics object as argument
+    return (g) -> nothing
 end
+
+# Helper functions for text processing
 
 """
     _wrap_line(line::AbstractString, max_width::Int)
@@ -112,71 +151,6 @@ function _process_text(content::AbstractString, width::Int, height::Union{Int,No
 end
 
 """
-    _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
-
-Render text lines with borders. Width is the content width (excluding borders).
-Returns a vector of strings including border lines and optional title line.
-Matches UnicodePlots style: title on separate line above box, simple borders.
-"""
-function _render_with_border(lines::Vector{String}, width::Int, title::AbstractString, border::Symbol)
-    # Choose border characters
-    if border == :solid
-        tl, tr, bl, br = '┌', '┐', '└', '┘'
-        horiz, vert = '─', '│'
-    elseif border == :ascii
-        tl, tr, bl, br = '+', '+', '+', '+'
-        horiz, vert = '-', '|'
-    else
-        error("Unknown border style: $border. Use :solid or :ascii")
-    end
-
-    bordered = String[]
-
-    # ANSI color codes matching UnicodePlots
-    # Title: bright white + bold (\e[97;1m)
-    # Border: gray (\e[38;5;8m)
-    # Reset: \e[0m
-    title_color = "\e[97;1m"
-    border_color = "\e[38;5;8m"
-    reset = "\e[0m"
-
-    # Add title on separate line if present (matching UnicodePlots style)
-    # UnicodePlots format: 6 spaces + braille spaces + colored bold title + braille spaces + space
-    if !isempty(title)
-        # Use braille space (U+2800) like UnicodePlots for proper alignment
-        braille_space = '⠀'
-        # Calculate padding to center title over the box
-        # Box total width = width + 2 (for borders)
-        box_width = width + 2
-        title_padded = lpad(rpad(title, div(box_width + length(title), 2)), box_width)
-        # Apply color to title text only, braille spaces stay uncolored
-        title_with_color = replace(title_padded, title => title_color * title * reset)
-        # Add leading spaces and braille padding to match UnicodePlots
-        title_line = "      " * replace(title_with_color, ' ' => braille_space) * " "
-        push!(bordered, title_line)
-    end
-
-    # Simple top border (no title decoration)
-    # Add leading spaces and gray color to match UnicodePlots
-    top_line = "      " * border_color * string(tl, horiz ^ width, tr) * reset * " "
-    push!(bordered, top_line)
-
-    # Content lines with side borders (borders are gray)
-    for line in lines
-        # Pad line to width
-        padded = rpad(line, width)
-        content_line = "      " * border_color * string(vert) * reset * padded * border_color * string(vert) * reset * " "
-        push!(bordered, content_line)
-    end
-
-    # Bottom border (gray)
-    bottom_line = "      " * border_color * string(bl, horiz ^ width, br) * reset * " "
-    push!(bordered, bottom_line)
-
-    return bordered
-end
-
-"""
     textplot(content::AbstractString;
              width=:auto,
              height=:auto,
@@ -185,13 +159,14 @@ end
              wrap::Bool=true)
 
 Create a text display element that can be used in layouts alongside plots.
+Returns a UnicodePlots.Plot object for consistency with other plot types.
 
 # Arguments
 - `content`: Text content to display (multiline strings supported)
 - `width`: Width in characters or `:auto` for automatic sizing
 - `height`: Height in lines or `:auto` for automatic sizing
 - `title`: Optional title displayed at top
-- `border`: Border style - `:solid` (Unicode) or `:ascii`
+- `border`: Border style - `:solid` (Unicode), `:ascii`, `:bold`, `:dashed`, `:dotted`, or `:none`
 - `wrap`: Enable word wrapping (`true`) or truncate lines (`false`)
 
 # Examples
@@ -208,14 +183,11 @@ function textplot(content::AbstractString;
                   title::AbstractString="",
                   border::Symbol=:solid,
                   wrap::Bool=true)
-    # Process content to get lines
-    # For auto sizing, we need to process first to determine dimensions
-
     # Calculate actual width
     actual_width = if width == :auto
         # Find longest line in content
         input_lines = split(content, '\n', keepempty=true)
-        max_line_length = maximum(length(rstrip(String(line))) for line in input_lines)
+        max_line_length = maximum(length(rstrip(String(line))) for line in input_lines; init=0)
         max(max_line_length, 5)  # Minimum width of 5
     else
         width
@@ -229,56 +201,29 @@ function textplot(content::AbstractString;
         height
     end
 
-    # Create graphics with actual dimensions
-    graphics = TextGraphics(actual_width, actual_height)
-
-    # Store all parameters in decorations
-    decorations = Dict{Symbol, Any}(
-        :title => title,
-        :width => width,
-        :height => height,
-        :border => border,
-        :wrap => wrap,
-        :content => content
-    )
-
-    return TextPlot(graphics, decorations)
-end
-
-"""
-    Base.show(io::IO, ::MIME"text/plain", tp::TextPlot)
-
-Render the TextPlot to a string for display.
-"""
-function Base.show(io::IO, ::MIME"text/plain", tp::TextPlot)
-    content = tp.decorations[:content]
-    width = tp.graphics.char_width
-    height = tp.graphics.char_height
-    title = tp.decorations[:title]
-    border = tp.decorations[:border]
-    wrap = tp.decorations[:wrap]
-
-    # Process text
-    lines = _process_text(content, width, height, wrap)
+    # Process text with actual dimensions
+    lines = _process_text(content, actual_width, actual_height, wrap)
 
     # Pad to height if needed
-    while length(lines) < height
+    while length(lines) < actual_height
         push!(lines, "")
     end
 
-    # Render with border
-    bordered_lines = _render_with_border(lines, width, title, border)
+    # Create TextGraphics
+    graphics = TextGraphics(lines, actual_width, actual_height, true)
 
-    # Output
-    print(io, join(bordered_lines, '\n'))
-end
+    # Create Plot with TextGraphics
+    # UnicodePlots will handle borders and title rendering
+    plot = Plot(
+        graphics;
+        title=title,
+        border=border,
+        # Set labels to empty to maximize content area
+        xlabel="",
+        ylabel="",
+        # Disable decorations that don't make sense for text
+        compact=true
+    )
 
-"""
-    Base.show(io::IO, tp::TextPlot)
-
-Render the TextPlot to a string for display (fallback for string()).
-"""
-function Base.show(io::IO, tp::TextPlot)
-    # Use the same rendering as MIME"text/plain"
-    show(io, MIME("text/plain"), tp)
+    return plot
 end
