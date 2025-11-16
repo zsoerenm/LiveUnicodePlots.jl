@@ -8,7 +8,6 @@ A Julia package for creating live/animated terminal plots and flexible plot layo
 
 - **Live/Animated Plots**: Update plots in-place for smooth terminal animations
 - **Flexible Layouts**: Arrange plots horizontally or in grids with automatic width/height negotiation
-- **Performance**: Automatic caching of layout calculations for efficient updates
 - **Simple API**: Clean macro-based interface for both static and animated plots
 
 ## Installation
@@ -55,10 +54,10 @@ function plot_sincos()
     for i in 1:100
         push!(x_vals, i * 0.1)
 
-        @live_layout live_plot [
+        live_plot(@layout [
             lineplot(x_vals, sin.(x_vals); title="sin(x)", xlim = (0, 10), ylim = (-1, 1)),
             lineplot(x_vals, cos.(x_vals); title="cos(x)", xlim = (0, 10), ylim = (-1, 1))
-        ]
+        ])
 
         sleep(0.05)
     end
@@ -106,7 +105,7 @@ textplot("""
 
 ### Dynamic Plot Switching
 
-LivePlot automatically detects when plot characteristics change and recalculates layouts:
+You can dynamically switch between different plot types:
 
 ```julia
 using LiveLayoutUnicodePlots
@@ -127,20 +126,14 @@ for i in 1:100
         textplot("Waiting for signal..."; width=30, title="Status")
     end
 
-    @live_layout live_plot [
+    live_plot(@layout [
         plot1,
         lineplot(x, cos.(x); title="Reference")
-    ]
+    ])
 
     sleep(0.05)
 end
 ```
-
-The cache automatically invalidates when:
-- Plot type changes (lineplot ↔ textplot ↔ barplot)
-- Title changes
-- Labels change (xlabel, ylabel)
-- Axis limits change (xlim, ylim)
 
 ## Documentation
 
@@ -148,7 +141,7 @@ The cache automatically invalidates when:
 
 #### `@layout`
 
-Create static plot layouts with automatic width/height negotiation.
+Create plot layouts with automatic width/height negotiation.
 
 ```julia
 # Horizontal layout
@@ -156,16 +149,10 @@ Create static plot layouts with automatic width/height negotiation.
 
 # Grid layout (Vector of Vectors)
 @layout [[row1_plot1, row1_plot2], [row2_plot1, row2_plot2]]
-```
 
-#### `@live_layout`
-
-Create animated plot layouts with caching for performance.
-
-```julia
+# With LivePlot for animations
 live_plot = LivePlot()
-
-@live_layout live_plot [plot1, plot2, ...]
+live_plot(@layout [plot1, plot2, ...])
 ```
 
 ### Width and Height Negotiation

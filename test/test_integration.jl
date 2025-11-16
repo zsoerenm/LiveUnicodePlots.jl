@@ -44,25 +44,24 @@ using UnicodePlots
         @test !isempty(result.content)
     end
 
-    @testset "@live_layout macro" begin
+    @testset "LivePlot with @layout" begin
         x = [1, 2, 3, 4, 5]
         y = [1, 4, 9, 16, 25]
 
         lp = LivePlot()
 
         redirect_stdout(devnull) do
-            @live_layout lp [
+            lp(@layout [
                 lineplot(x, y; width=:auto, height=10),
                 lineplot(x, y .* 2; width=:auto, height=10)
-            ]
+            ])
         end
 
-        # After first call, cached_widths should be populated
-        @test !isempty(lp.cached_widths)
+        # After first call, first_iteration should be false
         @test lp.first_iteration == false
     end
 
-    @testset "@live_layout with multiple iterations" begin
+    @testset "LivePlot with multiple iterations" begin
         lp = LivePlot()
 
         redirect_stdout(devnull) do
@@ -70,16 +69,15 @@ using UnicodePlots
                 x = collect(1:i+2)
                 y = x .^ 2
 
-                @live_layout lp [
+                lp(@layout [
                     lineplot(x, y; width=:auto, height=10),
                     lineplot(x, y .* 2; width=:auto, height=10)
-                ]
+                ])
             end
         end
 
-        # Should have cached widths after iterations
-        @test !isempty(lp.cached_widths)
-        @test lp.cached_widths[1] > 0
+        # First iteration flag should be false after iterations
+        @test lp.first_iteration == false
     end
 
     @testset "TextPlot in layouts" begin
@@ -131,16 +129,16 @@ using UnicodePlots
                     x = collect(1:i+2)
                     y = x .^ 2
 
-                    @live_layout lp [
+                    lp(@layout [
                         lineplot(x, y; width=30, height=10),
                         textplot("Iteration: $i\nCount: $(length(x))";
                                 width=20, height=10, title="Status")
-                    ]
+                    ])
                 end
             end
 
-            # Should have cached widths
-            @test !isempty(lp.cached_widths)
+            # First iteration flag should be false after iterations
+            @test lp.first_iteration == false
         end
     end
 
@@ -153,52 +151,46 @@ using UnicodePlots
             # Start with lineplot
             redirect_stdout(devnull) do
                 for i in 1:3
-                    @live_layout lp [
+                    lp(@layout [
                         lineplot(x, y; width=:auto),
                         lineplot(x, y .* 2; width=:auto)
-                    ]
+                    ])
                 end
             end
 
-            sig_lineplot = copy(lp.cached_signatures[1])
+            @test lp.first_iteration == false
 
             # Switch to textplot in first position
             redirect_stdout(devnull) do
                 for i in 1:3
-                    @live_layout lp [
+                    lp(@layout [
                         textplot("Status: Running"; width=:auto),
                         lineplot(x, y .* 2; width=:auto)
-                    ]
+                    ])
                 end
             end
 
-            sig_textplot = lp.cached_signatures[1]
-
-            @test sig_lineplot != sig_textplot
-            @test length(lp.cached_widths) == 1
-            @test length(lp.cached_signatures) == 1
+            @test lp.first_iteration == false
         end
 
-        @testset "title toggling invalidates cache" begin
+        @testset "title toggling" begin
             lp = LivePlot()
             x = [1, 2, 3, 4, 5]
 
             # Iteration 1: with title
             redirect_stdout(devnull) do
-                @live_layout lp [lineplot(x, x; width=:auto, title="Titled")]
+                lp(@layout [lineplot(x, x; width=:auto, title="Titled")])
             end
-            sig_with_title = lp.cached_signatures[1][1]
+            @test lp.first_iteration == false
 
             # Iteration 2: without title
             redirect_stdout(devnull) do
-                @live_layout lp [lineplot(x, x; width=:auto, title="")]
+                lp(@layout [lineplot(x, x; width=:auto, title="")])
             end
-            sig_without_title = lp.cached_signatures[1][1]
-
-            @test sig_with_title != sig_without_title
+            @test lp.first_iteration == false
         end
 
-        @testset "conditional plot rendering with cache" begin
+        @testset "conditional plot rendering" begin
             lp = LivePlot()
             x = Float64[]
             y = Float64[]
@@ -215,16 +207,15 @@ using UnicodePlots
                         textplot("Warming up..."; width=:auto, title="Status")
                     end
 
-                    @live_layout lp [
+                    lp(@layout [
                         plot1,
                         lineplot(x, cos.(x); width=:auto, title="Reference")
-                    ]
+                    ])
                 end
             end
 
-            # Cache should have been invalidated at i=6
-            @test length(lp.cached_signatures) == 1
-            @test length(lp.cached_signatures[1]) == 2
+            # Should complete without errors
+            @test lp.first_iteration == false
         end
     end
 end
