@@ -21,7 +21,6 @@ using UnicodePlots
         lp = LivePlot()
         @test lp.num_lines == 0
         @test lp.first_iteration == true
-        @test lp.cached_widths == Int[]
 
         # Test that LivePlot is mutable
         lp.num_lines = 5
@@ -29,9 +28,6 @@ using UnicodePlots
 
         lp.first_iteration = false
         @test lp.first_iteration == false
-
-        push!(lp.cached_widths, 40)
-        @test lp.cached_widths == [40]
     end
 
     @testset "LivePlot callable" begin

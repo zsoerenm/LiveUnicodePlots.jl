@@ -8,5 +8,4 @@ using UnicodePlots
     include("test_merging.jl")
     include("test_textplot.jl")
     include("test_integration.jl")
-    include("test_cache_invalidation.jl")
 end
