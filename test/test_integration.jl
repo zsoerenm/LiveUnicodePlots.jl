@@ -200,15 +200,13 @@ using UnicodePlots
                     push!(x, i * 0.1)
                     push!(y, sin(i * 0.1))
 
-                    # Conditionally show lineplot or textplot
-                    plot1 = if i > 5
-                        lineplot(x, y; width=:auto, title="Signal")
-                    else
-                        textplot("Warming up..."; width=:auto, title="Status")
-                    end
-
+                    # Conditionally show lineplot or textplot (inline if/else)
                     lp(@layout [
-                        plot1,
+                        if i > 5
+                            lineplot(x, y; width=:auto, title="Signal")
+                        else
+                            textplot("Warming up..."; width=:auto, title="Status")
+                        end,
                         lineplot(x, cos.(x); width=:auto, title="Reference")
                     ])
                 end

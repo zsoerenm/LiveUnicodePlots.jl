@@ -105,7 +105,7 @@ textplot("""
 
 ### Dynamic Plot Switching
 
-You can dynamically switch between different plot types:
+You can dynamically switch between different plot types using inline if/else expressions:
 
 ```julia
 using LiveLayoutUnicodePlots
@@ -119,20 +119,42 @@ for i in 1:100
     push!(x, i * 0.1)
     push!(y, sin(i * 0.1))
 
-    # Dynamically choose plot type based on condition
-    plot1 = if length(y) > 50 && maximum(y) > 0.5
-        lineplot(x, y; title="Signal")
-    else
-        textplot("Waiting for signal..."; width=30, title="Status")
-    end
-
+    # Use if/else INLINE within @layout (not as a variable!)
     live_plot(@layout [
-        plot1,
+        if length(y) > 50 && maximum(y) > 0.5
+            lineplot(x, y; title="Signal")
+        else
+            textplot("Waiting for signal..."; width=30, title="Status")
+        end,
         lineplot(x, cos.(x); title="Reference")
     ])
 
     sleep(0.05)
 end
+```
+
+**Important:** The `@layout` macro requires plot expressions to be written directly inline. It cannot process pre-computed variables:
+
+```julia
+# ❌ This will NOT work:
+plot1 = textplot("content"; width=:auto)
+@layout [plot1, plot2]  # Error! Cannot inject width into variables
+
+# ✅ This works:
+@layout [
+    textplot("content"),  # width automatically negotiated
+    textplot("more")
+]
+
+# ✅ Inline if/else also works:
+@layout [
+    if condition
+        textplot("A")
+    else
+        textplot("B")
+    end,
+    textplot("more")
+]
 ```
 
 ## Documentation
