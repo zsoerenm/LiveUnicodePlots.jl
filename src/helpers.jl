@@ -40,8 +40,37 @@ end
 
 Extract the width value from a plot expression.
 Returns the width value if present, otherwise returns nothing.
+Handles if/else expressions by checking all branches (returns nothing if any branch lacks width).
 """
 function extract_width(expr)
+    # Handle if/else expressions
+    if expr isa Expr && expr.head == :if
+        # Check all branches - if any branch doesn't have width, return nothing
+        then_width = extract_width(expr.args[2])
+        if length(expr.args) >= 3
+            else_width = extract_width(expr.args[3])
+            # Both branches must have same width specification for us to extract it
+            if then_width == else_width
+                return then_width
+            else
+                return nothing  # Branches have different widths
+            end
+        else
+            return then_width
+        end
+    end
+
+    # Handle block expressions
+    if expr isa Expr && expr.head == :block
+        # Find the actual plot expression in the block (skip LineNumberNodes)
+        for arg in expr.args
+            if !(arg isa LineNumberNode)
+                return extract_width(arg)
+            end
+        end
+        return nothing
+    end
+
     kwargs = get_kwargs_from_expr(expr)
     for kwarg in kwargs
         if kwarg isa Expr && kwarg.head == :kw && kwarg.args[1] == :width
@@ -88,8 +117,32 @@ end
 
 Remove the title parameter from a plot expression.
 This is used when creating temporary plots for overhead calculation.
+Handles if/else expressions by recursively processing branches.
 """
 function remove_title(expr)
+    # Handle if/else expressions
+    if expr isa Expr && expr.head == :if
+        new_args = Any[expr.args[1]]  # Keep condition
+        push!(new_args, remove_title(expr.args[2]))  # Process then-branch
+        if length(expr.args) >= 3
+            push!(new_args, remove_title(expr.args[3]))  # Process else-branch
+        end
+        return Expr(:if, new_args...)
+    end
+
+    # Handle block expressions
+    if expr isa Expr && expr.head == :block
+        new_args = Any[]
+        for arg in expr.args
+            if arg isa LineNumberNode
+                push!(new_args, arg)
+            else
+                push!(new_args, remove_title(arg))
+            end
+        end
+        return Expr(:block, new_args...)
+    end
+
     if !(expr isa Expr) || expr.head != :call
         return expr
     end
@@ -118,10 +171,71 @@ end
     add_width_param(expr, width_var)
 
 Add a width parameter to a plot expression (only if not already present).
+Handles if/else expressions by recursively processing branches.
+For variables or unsupported expressions, throws an error directing users to use direct expressions.
 """
 function add_width_param(expr, width_var)
+    # Handle if/else expressions by recursively processing branches
+    if expr isa Expr && expr.head == :if
+        # expr.args[1] is the condition
+        # expr.args[2] is the then-branch
+        # expr.args[3] is the else-branch (if present)
+        new_args = Any[expr.args[1]]  # Keep the condition unchanged
+        push!(new_args, add_width_param(expr.args[2], width_var))  # Process then-branch
+        if length(expr.args) >= 3
+            push!(new_args, add_width_param(expr.args[3], width_var))  # Process else-branch
+        end
+        return Expr(:if, new_args...)
+    end
+
+    # Handle block expressions (from if/else bodies)
+    if expr isa Expr && expr.head == :block
+        # Find the actual plot expression in the block (skip LineNumberNodes)
+        new_args = Any[]
+        for arg in expr.args
+            if arg isa LineNumberNode
+                push!(new_args, arg)
+            else
+                push!(new_args, add_width_param(arg, width_var))
+            end
+        end
+        return Expr(:block, new_args...)
+    end
+
+    # If it's not a call expression and not an if/else, throw an error
     if !(expr isa Expr) || expr.head != :call
-        return expr
+        error("""
+            @layout macro cannot inject width into variables.
+
+            You passed a variable to @layout, but the macro needs direct plot expressions
+            to automatically distribute width.
+
+            Instead of:
+                plot1 = textplot("content"; title="Title")
+                @layout [plot1, plot2]
+
+            Use one of these options:
+
+            Option 1 - Inline the plot expressions (recommended):
+                @layout [
+                    textplot("content"; title="Title"),
+                    textplot("more"; title="Title 2")
+                ]
+
+            Option 2 - Use if/else expressions inline:
+                @layout [
+                    if condition
+                        textplot("A"; title="Title")
+                    else
+                        textplot("B"; title="Title")
+                    end,
+                    textplot("more"; title="Title 2")
+                ]
+
+            DO NOT use variables:
+                plot1 = textplot("content"; title="Title", width=:auto)  # This won't work!
+                @layout [plot1, plot2]  # width=:auto is evaluated at plot creation, not macro time
+            """)
     end
 
     # Check if width is already present
